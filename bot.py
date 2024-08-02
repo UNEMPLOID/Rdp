@@ -14,7 +14,7 @@ LOG_GROUP_ID = -1002155266073
 # Channels and group
 REQUIRED_CHANNELS = ["@Found_Us", "@Falcon_security", "@Pbail_Squad"]
 REQUIRED_GROUP = "@indian_hacker_group"
-OWNER = "@Moon_God_Khonsu"
+OWNER = "moon_God_Khonsu"
 
 # Initialize bot
 bot = telebot.TeleBot(TOKEN)
