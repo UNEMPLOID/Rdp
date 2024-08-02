@@ -42,9 +42,10 @@ def send_welcome(message: telebot.types.Message):
     keyboard.add(
         types.InlineKeyboardButton("Verify", callback_data='verify')
     )
-keyboard.add(
+    keyboard.add(
         types.InlineKeyboardButton("Owner", url="https://t.me/Moon_God_Khonsu")
-)
+    )
+
     # Welcome message
     welcome_message = "Welcome! Please join all the required channels and group to use the bot."
     try:
@@ -161,3 +162,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
