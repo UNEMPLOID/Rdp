@@ -11,7 +11,7 @@ TOKEN = '7358780729:AAHF1wFekVfEBwYUd4i9uX5JWl3EFVUWxfM'
 LOG_GROUP_ID = -1002155266073
 
 # Channels and group
-REQUIRED_CHANNELS = ["@Found_Us", "@Falcon_security", "@Rajababu"]
+REQUIRED_CHANNELS = ["@Found_Us", "@Falcon_security", "@Pbail_Squad"]
 REQUIRED_GROUP = "@indian_hacker_group"
 OWNER = "@Moon_God_Khonsu"
 
@@ -37,12 +37,14 @@ def send_welcome(message: telebot.types.Message):
     )
     keyboard.add(
         types.InlineKeyboardButton("Indian Hacker Group", url="https://t.me/indian_hacker_group"),
-        types.InlineKeyboardButton("Rajababu", url="https://t.me/Rajababu")
+        types.InlineKeyboardButton("Rajababu", url="https://t.me/Pbail_Squad")
     )
     keyboard.add(
         types.InlineKeyboardButton("Verify", callback_data='verify')
     )
-
+keyboard.add(
+        types.InlineKeyboardButton("Owner", url="https://t.me/Moon_God_Khonsu")
+)
     # Welcome message
     welcome_message = "Welcome! Please join all the required channels and group to use the bot."
     try:
