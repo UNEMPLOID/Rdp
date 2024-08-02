@@ -14,7 +14,7 @@ LOG_GROUP_ID = -1002155266073
 # Channels and group
 REQUIRED_CHANNELS = ["@Found_Us", "@Falcon_security", "@Pbail_Squad"]
 REQUIRED_GROUP = "@indian_hacker_group"
-OWNER = "moon_God_Khonsu"
+OWNER_ID = 5460343986  # Use the owner ID directly
 
 # Initialize bot
 bot = telebot.TeleBot(TOKEN)
@@ -153,8 +153,8 @@ def send_commands(call: telebot.types.CallbackQuery):
 
 @bot.message_handler(commands=['broadcast'])
 def broadcast(message: telebot.types.Message):
-    # Check if the user is the bot owner
-    if message.from_user.username and message.from_user.username.lower() == OWNER.lower()[1:]:
+    # Check if the user is the bot owner by user ID
+    if message.from_user.id == OWNER_ID:
         message_text = ' '.join(message.text.split()[1:])
         sent_count = 0
         for row in cursor.execute('SELECT user_id FROM users'):
