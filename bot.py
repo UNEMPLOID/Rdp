@@ -2,7 +2,8 @@ import telebot
 from telebot import types
 import logging
 import time
-import sqlite3
+from pymongo import MongoClient, errors
+from datetime import datetime
 
 # Enable logging
 logging.basicConfig(level=logging.INFO)
@@ -19,32 +20,26 @@ OWNER_ID = 5460343986  # Use the owner ID directly
 # Initialize bot
 bot = telebot.TeleBot(TOKEN)
 
-# Initialize SQLite database
-conn = sqlite3.connect('bot_data.db', check_same_thread=False)
-cursor = conn.cursor()
+# Initialize MongoDB database
+MONGODB_URI = 'mongodb+srv://uz1xqa70kw:4cjhKDDYTRDkRBPT@cluster0.dsaevox.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'
 
-# Create tables if they don't exist
-cursor.execute('''
-CREATE TABLE IF NOT EXISTS users (
-    user_id INTEGER PRIMARY KEY,
-    username TEXT
-)
-''')
-cursor.execute('''
-CREATE TABLE IF NOT EXISTS logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    username TEXT,
-    action TEXT,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-)
-''')
+try:
+    client = MongoClient(MONGODB_URI)
+    db = client.get_default_database()
+    logging.info("Connected to MongoDB using SRV connection string.")
+except errors.ConfigurationError:
+    logging.error("Failed to connect to MongoDB using SRV connection string.")
+
+users_collection = db.users
+logs_collection = db.logs
 
 def log_action(user_id, username, action):
-    cursor.execute('''
-    INSERT INTO logs (user_id, username, action) VALUES (?, ?, ?)
-    ''', (user_id, username, action))
-    conn.commit()
+    logs_collection.insert_one({
+        'user_id': user_id,
+        'username': username,
+        'action': action,
+        'timestamp': datetime.now()
+    })
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message: telebot.types.Message):
@@ -52,10 +47,11 @@ def send_welcome(message: telebot.types.Message):
     user_name = message.from_user.username or f"User_{user_id}"
 
     # Insert user data into the database
-    cursor.execute('''
-    INSERT OR IGNORE INTO users (user_id, username) VALUES (?, ?)
-    ''', (user_id, user_name))
-    conn.commit()
+    users_collection.update_one(
+        {'user_id': user_id},
+        {'$set': {'username': user_name}},
+        upsert=True
+    )
 
     # Log user start action
     log_action(user_id, user_name, 'start')
@@ -90,9 +86,10 @@ def send_welcome(message: telebot.types.Message):
 
     # Logging new user start
     try:
+        total_users_count = users_collection.count_documents({})
         bot.send_message(
             chat_id=LOG_GROUP_ID,
-            text=f"➕ New User Notification ➕\n\n👤 User: @{user_name}\n🆔 User ID: {user_id}\n🌝 Total Users Count: {cursor.execute('SELECT COUNT(*) FROM users').fetchone()[0]}"
+            text=f"➕ New User Notification ➕\n\n👤 User: @{user_name}\n🆔 User ID: {user_id}\n🌝 Total Users Count: {total_users_count}"
         )
     except telebot.apihelper.ApiTelegramException as e:
         logging.error(f"Failed to log new user start for user {user_id}: {e}")
@@ -121,12 +118,17 @@ def process_callback_verify(call: telebot.types.CallbackQuery):
             types.InlineKeyboardButton("Free RDP", web_app=types.WebAppInfo(url="https://app.apponfly.com/trial"))
         )
         try:
-            bot.send_message(
+            message = bot.send_message(
                 chat_id=user_id,
                 text="Thank you for using our service. Press the Free RDP button to use RDP.",
                 reply_markup=keyboard
             )
             log_action(user_id, user_name, 'verified')
+            
+            # Delete the mini app button after 10 seconds
+            time.sleep(10)
+            bot.delete_message(chat_id=user_id, message_id=message.message_id)
+            bot.send_message(chat_id=user_id, text="The Free RDP button has expired. Please start the bot again.")
         except telebot.apihelper.ApiTelegramException as e:
             logging.error(f"Failed to send Free RDP message to user {user_id}: {e}")
     else:
@@ -157,8 +159,8 @@ def broadcast(message: telebot.types.Message):
     if message.from_user.id == OWNER_ID:
         message_text = ' '.join(message.text.split()[1:])
         sent_count = 0
-        for row in cursor.execute('SELECT user_id FROM users'):
-            user_id = row[0]
+        for user in users_collection.find({}):
+            user_id = user['user_id']
             try:
                 bot.send_message(chat_id=user_id, text=message_text)
                 sent_count += 1
@@ -177,19 +179,17 @@ def broadcast(message: telebot.types.Message):
 
 @bot.message_handler(commands=['stats'])
 def stats(message: telebot.types.Message):
-    user_count = cursor.execute('SELECT COUNT(*) FROM users').fetchone()[0]
+    user_count = users_collection.count_documents({})
     try:
         bot.send_message(message.chat.id, f"Total users who started the bot: {user_count}")
     except telebot.apihelper.ApiTelegramException as e:
         logging.error(f"Failed to send stats to user {message.from_user.id}: {e}")
 
-def main():
-    while True:
-        try:
-            bot.polling(none_stop=True)
-        except Exception as e:
-            logging.error(f"Bot polling failed: {e}")
-            time.sleep(10)  # Wait before restarting the polling loop
-
-if __name__ == "__main__":
-    main()
+# Start polling
+while True:
+    try:
+        logging.info("Bot polling started.")
+        bot.polling(none_stop=True)
+    except Exception as e:
+        logging.error(f"Bot polling failed: {e}")
+        time.sleep(15)
