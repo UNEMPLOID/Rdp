@@ -25,33 +25,36 @@ MONGODB_URI = 'mongodb+srv://uz1xqa70kw:4cjhKDDYTRDkRBPT@cluster0.dsaevox.mongod
 
 try:
     client = MongoClient(MONGODB_URI)
-    db = client.get_default_database()
+    db = client.get_database()
     logging.info("Connected to MongoDB using SRV connection string.")
-except errors.ConfigurationError:
-    logging.error("Failed to connect to MongoDB using SRV connection string.")
-
-users_collection = db.users
-logs_collection = db.logs
+    users_collection = db.users
+    logs_collection = db.logs
+except errors.ConfigurationError as e:
+    logging.error(f"Failed to connect to MongoDB using SRV connection string: {e}")
+    users_collection = None
+    logs_collection = None
 
 def log_action(user_id, username, action):
-    logs_collection.insert_one({
-        'user_id': user_id,
-        'username': username,
-        'action': action,
-        'timestamp': datetime.now()
-    })
+    if logs_collection:
+        logs_collection.insert_one({
+            'user_id': user_id,
+            'username': username,
+            'action': action,
+            'timestamp': datetime.now()
+        })
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message: telebot.types.Message):
     user_id = message.from_user.id
     user_name = message.from_user.username or f"User_{user_id}"
 
-    # Insert user data into the database
-    users_collection.update_one(
-        {'user_id': user_id},
-        {'$set': {'username': user_name}},
-        upsert=True
-    )
+    if users_collection:
+        # Insert user data into the database
+        users_collection.update_one(
+            {'user_id': user_id},
+            {'$set': {'username': user_name}},
+            upsert=True
+        )
 
     # Log user start action
     log_action(user_id, user_name, 'start')
@@ -85,14 +88,15 @@ def send_welcome(message: telebot.types.Message):
         )
 
     # Logging new user start
-    try:
-        total_users_count = users_collection.count_documents({})
-        bot.send_message(
-            chat_id=LOG_GROUP_ID,
-            text=f"➕ New User Notification ➕\n\n👤 User: @{user_name}\n🆔 User ID: {user_id}\n🌝 Total Users Count: {total_users_count}"
-        )
-    except telebot.apihelper.ApiTelegramException as e:
-        logging.error(f"Failed to log new user start for user {user_id}: {e}")
+    if users_collection:
+        try:
+            total_users_count = users_collection.count_documents({})
+            bot.send_message(
+                chat_id=LOG_GROUP_ID,
+                text=f"➕ New User Notification ➕\n\n👤 User: @{user_name}\n🆔 User ID: {user_id}\n🌝 Total Users Count: {total_users_count}"
+            )
+        except telebot.apihelper.ApiTelegramException as e:
+            logging.error(f"Failed to log new user start for user {user_id}: {e}")
 
 @bot.callback_query_handler(func=lambda call: call.data == 'verify')
 def process_callback_verify(call: telebot.types.CallbackQuery):
@@ -159,13 +163,14 @@ def broadcast(message: telebot.types.Message):
     if message.from_user.id == OWNER_ID:
         message_text = ' '.join(message.text.split()[1:])
         sent_count = 0
-        for user in users_collection.find({}):
-            user_id = user['user_id']
-            try:
-                bot.send_message(chat_id=user_id, text=message_text)
-                sent_count += 1
-            except telebot.apihelper.ApiTelegramException as e:
-                logging.warning(f"Could not send message to {user_id}: {e}")
+        if users_collection:
+            for user in users_collection.find({}):
+                user_id = user['user_id']
+                try:
+                    bot.send_message(chat_id=user_id, text=message_text)
+                    sent_count += 1
+                except telebot.apihelper.ApiTelegramException as e:
+                    logging.warning(f"Could not send message to {user_id}: {e}")
         try:
             bot.send_message(message.chat.id, f"Broadcast sent to {sent_count} users.")
             log_action(message.from_user.id, message.from_user.username, 'broadcast')
@@ -179,7 +184,7 @@ def broadcast(message: telebot.types.Message):
 
 @bot.message_handler(commands=['stats'])
 def stats(message: telebot.types.Message):
-    user_count = users_collection.count_documents({})
+    user_count = users_collection.count_documents({}) if users_collection else 0
     try:
         bot.send_message(message.chat.id, f"Total users who started the bot: {user_count}")
     except telebot.apihelper.ApiTelegramException as e:
