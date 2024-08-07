@@ -21,7 +21,7 @@ OWNER_ID = 5460343986  # Use the owner ID directly
 bot = telebot.TeleBot(TOKEN)
 
 # Initialize MongoDB database
-MONGODB_URI = 'mongodb+srv://uz1xqa70kw:4cjhKDDYTRDkRBPT@cluster0.dsaevox.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'
+MONGODB_URI = 'mongodb+srv://uz1xqa70kw:4cjhKDDYTRDkRBPT@cluster0.dsaevox.mongodb.net/bot_database?retryWrites=true&w=majority&appName=Cluster0'
 
 try:
     client = MongoClient(MONGODB_URI)
