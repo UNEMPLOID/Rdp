@@ -13,7 +13,7 @@ TOKEN = '7358780729:AAHF1wFekVfEBwYUd4i9uX5JWl3EFVUWxfM'
 LOG_GROUP_ID = -1002155266073
 
 # Channels and group
-REQUIRED_CHANNELS = ["@Found_Us", "@Falcon_security", "@Pbail_Squad"]
+REQUIRED_CHANNELS = ["@QuantumEthics", "@Falcon_security", "@Pbail_Squad"]
 REQUIRED_GROUP = "@indian_hacker_group"
 OWNER_ID = 5460343986  # Use the owner ID directly
 
@@ -62,7 +62,7 @@ def send_welcome(message: telebot.types.Message):
     # Inline buttons
     keyboard = types.InlineKeyboardMarkup()
     keyboard.add(
-        types.InlineKeyboardButton("Found Us", url="https://t.me/Found_Us"),
+        types.InlineKeyboardButton("QuantumEthics", url="https://t.me/QuantumEthics"),
         types.InlineKeyboardButton("Falcon Security", url="https://t.me/Falcon_security")
     )
     keyboard.add(
